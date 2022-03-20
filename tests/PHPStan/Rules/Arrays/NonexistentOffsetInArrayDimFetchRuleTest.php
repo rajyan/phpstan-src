@@ -1,4 +1,4 @@
-<?php declare(strict_types = 1);
+<?php declare(strict_types = 1); // lint >= 8.0
 
 namespace PHPStan\Rules\Arrays;
 
@@ -365,6 +365,15 @@ class NonexistentOffsetInArrayDimFetchRuleTest extends RuleTestCase
 	public function testBug4747(): void
 	{
 		$this->analyse([__DIR__ . '/data/bug-4747.php'], []);
+	}
+
+	public function testBug4885(): void
+	{
+		if (PHP_VERSION_ID < 80000) {
+			$this->markTestSkipped('Test requires PHP 8.0.');
+		}
+
+		$this->analyse([__DIR__ . '/data/bug-4885.php'], []);
 	}
 
 }
