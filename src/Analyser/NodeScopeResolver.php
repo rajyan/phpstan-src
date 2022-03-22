@@ -2277,42 +2277,19 @@ class NodeScopeResolver
 				static fn (): MutatingScope => $rightResult->getScope()->filterByFalseyValue($expr),
 			);
 		} elseif ($expr instanceof Coalesce) {
-			$nonNullabilityResult = $this->ensureNonNullability($scope, $expr->left, false);
-
-			if ($expr->left instanceof PropertyFetch || $expr->left instanceof Expr\NullsafePropertyFetch) {
-				$scope = $this->lookForEnterVariableAssign($nonNullabilityResult->getScope(), $expr->left->var);
-			} elseif ($expr->left instanceof StaticPropertyFetch) {
-				if ($expr->left->class instanceof Expr) {
-					$scope = $this->lookForEnterVariableAssign($nonNullabilityResult->getScope(), $expr->left->class);
-				} else {
-					$scope = $nonNullabilityResult->getScope();
-				}
-			} else {
-				$scope = $this->lookForEnterVariableAssign($nonNullabilityResult->getScope(), $expr->left);
-			}
-			$result = $this->processExprNode($expr->left, $scope, $nodeCallback, $context->enterDeep());
+			$result = $this->processExprNode(
+				new Ternary(
+					new Expr\Isset_([$expr->left]),
+					$expr->left,
+					$expr->right,
+				),
+				$scope,
+				$nodeCallback,
+				$context->enterDeep()
+			);
+			$scope = $result->getScope();
 			$hasYield = $result->hasYield();
 			$throwPoints = $result->getThrowPoints();
-			$scope = $result->getScope();
-
-			$rightExprType = $scope->getType($expr->right);
-			if (!$rightExprType instanceof NeverType || !$rightExprType->isExplicit()) {
-				$scope = $this->revertNonNullability($scope, $nonNullabilityResult->getSpecifiedExpressions());
-			}
-
-			if ($expr->left instanceof PropertyFetch || $expr->left instanceof Expr\NullsafePropertyFetch) {
-				$scope = $this->lookForExitVariableAssign($scope, $expr->left->var);
-			} elseif ($expr->left instanceof StaticPropertyFetch) {
-				if ($expr->left->class instanceof Expr) {
-					$scope = $this->lookForExitVariableAssign($scope, $expr->left->class);
-				}
-			} else {
-				$scope = $this->lookForExitVariableAssign($scope, $expr->left);
-			}
-			$result = $this->processExprNode($expr->right, $scope, $nodeCallback, $context->enterDeep());
-			$scope = $result->getScope()->mergeWith($scope);
-			$hasYield = $hasYield || $result->hasYield();
-			$throwPoints = array_merge($throwPoints, $result->getThrowPoints());
 		} elseif ($expr instanceof BinaryOp) {
 			$result = $this->processExprNode($expr->left, $scope, $nodeCallback, $context->enterDeep());
 			$scope = $result->getScope();
